@@ -21,14 +21,14 @@ npm install
 
 2. **Configure environment**:
 ```bash
-# Copy and edit configuration for your preferred network
-cp .env.zircuit .env
+# Copy pre-configured network settings to active .env file
+cp .env.zircuit .env    # Use Zircuit Garfield testnet
 # OR
-cp .env.flow .env
+cp .env.flow .env       # Use Flow EVM testnet  
 # OR
-cp .env.hedera .env
+cp .env.hedera .env     # Use Hedera EVM testnet
 
-# Edit .env with your actual values
+# For production: Replace test mnemonic with your own
 nano .env
 ```
 
@@ -41,13 +41,71 @@ npm run dev
 
 ## Configuration
 
+### Environment File Structure
+
+The proxy uses a modular environment configuration system:
+
+- **`.env.sample`** - Template file showing all configuration options (do not use directly)
+- **`.env.zircuit`** - Pre-configured for Zircuit Garfield Testnet
+- **`.env.flow`** - Pre-configured for Flow EVM Testnet  
+- **`.env.hedera`** - Pre-configured for Hedera EVM Testnet
+- **`.env`** - **Active configuration file** (the only file the application reads)
+
+### Quick Network Switching
+
+To switch networks, simply copy the desired configuration to the active `.env` file:
+
+```bash
+# Use Zircuit Garfield testnet
+cp .env.zircuit .env
+
+# Use Flow EVM testnet
+cp .env.flow .env
+
+# Use Hedera EVM testnet
+cp .env.hedera .env
+
+# Start the server (reads from .env)
+npm start
+```
+
+Alternatively, use the test scripts for automated switching:
+
+```bash
+bash test-proxy.sh zircuit   # Auto-switches to Zircuit and starts server
+bash test-proxy.sh flow      # Auto-switches to Flow and starts server
+bash test-proxy.sh hedera    # Auto-switches to Hedera and starts server
+```
+
+### Security Configuration
+
+**Development vs Production:**
+
+- **Development**: All `.env.*` files use the test mnemonic `test test test...junk` (safe, no real funds)
+- **Production**: Copy `.env.sample` to `.env`, replace `SIGNING_MNEMONIC` with your actual 12-word phrase
+
+⚠️ **Never commit your real mnemonic to version control!**
+
 ### Network-Specific Configurations
 
-The proxy supports three testnets with pre-configured settings:
+### Network-Specific Configurations
 
-- **Zircuit Testnet** (`.env.zircuit`): Port 3001
-- **Flow EVM Testnet** (`.env.flow`): Port 3002  
-- **Hedera EVM Testnet** (`.env.hedera`): Port 3003
+The proxy supports three testnets with correct RPC endpoints:
+
+- **Zircuit Garfield Testnet** (`.env.zircuit`): 
+  - Port: 3001
+  - RPC: `https://garfield-testnet.zircuit.com/`
+  - Chain ID: 48898
+  
+- **Flow EVM Testnet** (`.env.flow`): 
+  - Port: 3002
+  - RPC: `https://testnet.evm.nodes.onflow.org/`
+  - Chain ID: 545
+  
+- **Hedera EVM Testnet** (`.env.hedera`): 
+  - Port: 3003
+  - RPC: `https://testnet.hashio.io/api`
+  - Chain ID: 296
 
 ### Environment Variables
 
@@ -58,7 +116,7 @@ Key configuration options:
 NETWORK=zircuit|flow|hedera
 
 # RPC Configuration (network-specific)
-ZIRCUIT_RPC_URL=https://zircuit1-testnet.p2pify.com/
+ZIRCUIT_RPC_URL=https://garfield-testnet.zircuit.com/
 FLOW_RPC_URL=https://testnet.evm.nodes.onflow.org/
 HEDERA_RPC_URL=https://testnet.hashio.io/api
 
@@ -158,6 +216,36 @@ Response:
 ```
 
 ## Testing
+
+### Quick Network Testing
+
+Test individual networks using the automated scripts:
+```bash
+bash test-proxy.sh zircuit   # Test Zircuit Garfield testnet
+bash test-proxy.sh flow      # Test Flow EVM testnet
+bash test-proxy.sh hedera    # Test Hedera EVM testnet
+```
+
+Test all networks automatically:
+```bash
+./test-all-networks.sh      # Comprehensive test of all three networks
+```
+
+### Manual Testing
+
+Start server with a specific network:
+```bash
+# Switch to desired network
+cp .env.zircuit .env
+npm start
+
+# In another terminal, test endpoints
+curl http://localhost:3001/health
+curl http://localhost:3001/network
+curl http://localhost:3001/block/current
+```
+
+### Unit Tests
 
 Run the test suite:
 ```bash
