@@ -4,11 +4,11 @@ import { useRpcProxy } from '../hooks/useRpcProxy';
 import toast from 'react-hot-toast';
 
 const InsuranceClaim = ({ policy, policyAbi, network }) => {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { getDelayProof, getTransactionStatus } = useRpcProxy(network?.id);
   const [txHash, setTxHash] = useState('');
-  const [proofData, setProofData] = useState(null);
-  const [txStatus, setTxStatus] = useState(null);
+  const [proofData, setProofData] = useState({});
+  const [txStatus, setTxStatus] = useState({});
   const [loading, setLoading] = useState(false);
 
   const { writeContract, data: hash, error, isPending } = useWriteContract();
@@ -21,8 +21,8 @@ const InsuranceClaim = ({ policy, policyAbi, network }) => {
     if (isSuccess) {
       toast.success('Claim submitted successfully!');
       setTxHash('');
-      setProofData(null);
-      setTxStatus(null);
+      setProofData({});
+      setTxStatus({});
     }
   }, [isSuccess]);
 
@@ -52,12 +52,12 @@ const InsuranceClaim = ({ policy, policyAbi, network }) => {
 
       // Check if transaction has sufficient delay
       if (status.status !== 'confirmed') {
-        toast.warning('Transaction is not confirmed yet');
+        toast.error('Transaction is not confirmed yet');
         return;
       }
 
       if (!status.delay || status.delay <= 10) { // Assuming 10 block threshold
-        toast.warning(`Transaction delay (${status.delay} blocks) is not sufficient for claim`);
+        toast.error(`Transaction delay (${status.delay} blocks) is not sufficient for claim`);
         return;
       }
 
@@ -86,10 +86,10 @@ const InsuranceClaim = ({ policy, policyAbi, network }) => {
 
     try {
       const claimProof = {
-        txHash: proofData.txHash,
-        broadcastBlock: BigInt(proofData.broadcastBlock),
-        confirmationBlock: BigInt(proofData.confirmationBlock),
-        rpcSignature: proofData.signature,
+        txHash: proofData['txHash'] || '',
+        broadcastBlock: Number(proofData['broadcastBlock'] || 0),
+        confirmationBlock: Number(proofData['confirmationBlock'] || 0),
+        rpcSignature: proofData['signature'] || '',
       };
 
       await writeContract({
@@ -169,9 +169,9 @@ const InsuranceClaim = ({ policy, policyAbi, network }) => {
           </button>
         </div>
 
-        {txStatus && (
+        {Object.keys(txStatus).length > 0 && (
           <div className={`p-4 rounded-lg border ${
-            txStatus.delay && txStatus.delay > 10 
+            txStatus['delay'] && txStatus['delay'] > 10 
               ? 'bg-green-50 border-green-200' 
               : 'bg-yellow-50 border-yellow-200'
           }`}>
@@ -179,55 +179,55 @@ const InsuranceClaim = ({ policy, policyAbi, network }) => {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium">Status:</span>
-                <span className={`ml-2 status-${txStatus.status}`}>{txStatus.status}</span>
+                <span className={`ml-2 status-${txStatus['status']}`}>{txStatus['status']}</span>
               </div>
               <div>
                 <span className="font-medium">Delay:</span>
-                <span className="ml-2">{txStatus.delay || 0} blocks</span>
+                <span className="ml-2">{txStatus['delay'] || 0} blocks</span>
               </div>
               <div>
                 <span className="font-medium">Broadcast Block:</span>
-                <span className="ml-2">{txStatus.broadcastBlock}</span>
+                <span className="ml-2">{txStatus['broadcastBlock']}</span>
               </div>
               <div>
                 <span className="font-medium">Confirmation Block:</span>
-                <span className="ml-2">{txStatus.confirmationBlock || 'N/A'}</span>
+                <span className="ml-2">{txStatus['confirmationBlock'] || 'N/A'}</span>
               </div>
             </div>
-            
-            {txStatus.delay && txStatus.delay > 10 ? (
+
+            {txStatus['delay'] && txStatus['delay'] > 10 ? (
               <div className="mt-2 text-green-700 text-sm">
                 ✓ Transaction is eligible for insurance claim
               </div>
             ) : (
               <div className="mt-2 text-yellow-700 text-sm">
-                ⚠ Transaction delay is insufficient for claim (need >10 blocks)
+                ⚠ Transaction delay is insufficient for claim (need &gt;10 blocks)
               </div>
             )}
           </div>
         )}
 
-        {proofData && (
+        {Object.keys(proofData).length > 0 && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="font-semibold text-blue-900 mb-2">Delay Proof Generated</h3>
             <div className="space-y-2 text-sm">
               <div>
                 <span className="text-blue-700">Transaction Hash:</span>
-                <p className="font-mono break-all">{proofData.txHash}</p>
+                <p className="font-mono break-all">{proofData['txHash']}</p>
               </div>
               <div>
                 <span className="text-blue-700">Delay:</span>
-                <p>{proofData.delay} blocks</p>
+                <p>{proofData['delay']} blocks</p>
               </div>
               <div>
                 <span className="text-blue-700">Signature:</span>
-                <p className="font-mono text-xs break-all">{proofData.signature}</p>
+                <p className="font-mono text-xs break-all">{proofData['signature']}</p>
               </div>
             </div>
           </div>
         )}
 
-        {proofData && (
+        {Object.keys(proofData).length > 0 && (
           <div className="flex justify-end">
             <button
               onClick={handleSubmitClaim}

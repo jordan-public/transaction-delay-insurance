@@ -1,16 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  useAccount, 
-  useChainId, 
-  useWriteContract, 
-  useWaitForTransactionReceipt,
-  useReadContract
-} from 'wagmi';
-import { parseEther, formatEther } from 'ethers';
-import toast from 'react-hot-toast';
+import React, { useState } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther } from 'ethers';
+import { toast } from 'react-hot-toast';
 
 const CreatePolicyForm = ({ policyFactoryAddress, policyFactoryAbi, onPolicyCreated }) => {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -69,9 +63,9 @@ const CreatePolicyForm = ({ policyFactoryAddress, policyFactoryAbi, onPolicyCrea
           formData.name,
           formData.description,
           '0x0000000000000000000000000000000000000000', // Use default RPC proxy
-          BigInt(formData.delayThreshold),
-          BigInt(formData.premiumPercentage),
-          BigInt(formData.protocolFeePercentage),
+          Number(formData.delayThreshold),
+          Number(formData.premiumPercentage),
+          Number(formData.protocolFeePercentage),
           payoutPerIncidentWei,
         ],
       });
@@ -131,7 +125,7 @@ const CreatePolicyForm = ({ policyFactoryAddress, policyFactoryAbi, onPolicyCrea
               value={formData.description}
               onChange={handleInputChange}
               className="input"
-              rows="3"
+              rows={3}
               placeholder="Describe the policy terms and coverage..."
               required
             />
