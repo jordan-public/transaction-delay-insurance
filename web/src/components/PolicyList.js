@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useReadContract } from 'wagmi';
+import { 
+  useAccount, 
+  useChainId, 
+  useReadContract
+} from 'wagmi';
 import { formatEther } from 'ethers';
 
 const PolicyList = ({ policyFactoryAddress, policyFactoryAbi, onPolicySelect }) => {

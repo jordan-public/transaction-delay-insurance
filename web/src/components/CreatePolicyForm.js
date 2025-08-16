@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import React, { useState, useEffect } from 'react';
+import { 
+  useAccount, 
+  useChainId, 
+  useWriteContract, 
+  useWaitForTransactionReceipt,
+  useReadContract
+} from 'wagmi';
 import { parseEther, formatEther } from 'ethers';
 import toast from 'react-hot-toast';
 
@@ -16,12 +22,10 @@ const CreatePolicyForm = ({ policyFactoryAddress, policyFactoryAbi, onPolicyCrea
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
-  });
-
-  React.useEffect(() => {
+  });  React.useEffect(() => {
     if (isSuccess) {
       toast.success('Policy created successfully!');
       onPolicyCreated?.();

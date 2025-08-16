@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { WagmiConfig, createConfig, configureChains } from 'wagmi';
-import { publicProvider } from 'wagmi/providers/public';
-import { RainbowKitProvider, getDefaultWallets, connectorsForWallets } from '@rainbow-me/rainbowkit';
+import { WagmiProvider, createConfig, http } from 'wagmi';
+import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 
@@ -16,69 +15,52 @@ import InsuranceClaim from './components/InsuranceClaim';
 import { NETWORKS, getNetworkById } from './config/networks';
 import { useRpcProxy } from './hooks/useRpcProxy';
 
-// Configure chains
-const { chains, publicClient } = configureChains(
-  [
-    {
-      id: NETWORKS.ZIRCUIT.id,
-      name: NETWORKS.ZIRCUIT.name,
-      network: 'zircuit-testnet',
-      nativeCurrency: NETWORKS.ZIRCUIT.nativeCurrency,
-      rpcUrls: {
-        default: { http: [NETWORKS.ZIRCUIT.rpcUrl] },
-        public: { http: [NETWORKS.ZIRCUIT.rpcUrl] },
-      },
-      blockExplorers: {
-        default: { name: 'Zircuit Explorer', url: NETWORKS.ZIRCUIT.blockExplorer },
-      },
-      testnet: true,
-    },
-    {
-      id: NETWORKS.FLOW.id,
-      name: NETWORKS.FLOW.name,
-      network: 'flow-testnet',
-      nativeCurrency: NETWORKS.FLOW.nativeCurrency,
-      rpcUrls: {
-        default: { http: [NETWORKS.FLOW.rpcUrl] },
-        public: { http: [NETWORKS.FLOW.rpcUrl] },
-      },
-      blockExplorers: {
-        default: { name: 'Flow Explorer', url: NETWORKS.FLOW.blockExplorer },
-      },
-      testnet: true,
-    },
-    {
-      id: NETWORKS.HEDERA.id,
-      name: NETWORKS.HEDERA.name,
-      network: 'hedera-testnet',
-      nativeCurrency: NETWORKS.HEDERA.nativeCurrency,
-      rpcUrls: {
-        default: { http: [NETWORKS.HEDERA.rpcUrl] },
-        public: { http: [NETWORKS.HEDERA.rpcUrl] },
-      },
-      blockExplorers: {
-        default: { name: 'Hedera Explorer', url: NETWORKS.HEDERA.blockExplorer },
-      },
-      testnet: true,
-    },
-  ],
-  [publicProvider()]
-);
+// Define chains for Wagmi v2
+const zircuitTestnet = {
+  id: NETWORKS.ZIRCUIT.id,
+  name: NETWORKS.ZIRCUIT.name,
+  nativeCurrency: NETWORKS.ZIRCUIT.nativeCurrency,
+  rpcUrls: {
+    default: { http: [NETWORKS.ZIRCUIT.rpcUrl] },
+  },
+  blockExplorers: {
+    default: { name: 'Zircuit Explorer', url: NETWORKS.ZIRCUIT.blockExplorer },
+  },
+  testnet: true,
+};
 
-// Configure wallets
-const { wallets } = getDefaultWallets({
+const flowTestnet = {
+  id: NETWORKS.FLOW.id,
+  name: NETWORKS.FLOW.name,
+  nativeCurrency: NETWORKS.FLOW.nativeCurrency,
+  rpcUrls: {
+    default: { http: [NETWORKS.FLOW.rpcUrl] },
+  },
+  blockExplorers: {
+    default: { name: 'Flow Explorer', url: NETWORKS.FLOW.blockExplorer },
+  },
+  testnet: true,
+};
+
+const hederaTestnet = {
+  id: NETWORKS.HEDERA.id,
+  name: NETWORKS.HEDERA.name,
+  nativeCurrency: NETWORKS.HEDERA.nativeCurrency,
+  rpcUrls: {
+    default: { http: [NETWORKS.HEDERA.rpcUrl] },
+  },
+  blockExplorers: {
+    default: { name: 'Hedera Explorer', url: NETWORKS.HEDERA.blockExplorer },
+  },
+  testnet: true,
+};
+
+// Configure Wagmi v2
+const config = getDefaultConfig({
   appName: 'Transaction Delay Insurance',
-  projectId: 'your-project-id', // Replace with your WalletConnect project ID
-  chains,
-});
-
-const connectors = connectorsForWallets(wallets);
-
-// Create wagmi config
-const wagmiConfig = createConfig({
-  autoConnect: true,
-  connectors,
-  publicClient,
+  projectId: process.env.REACT_APP_WALLETCONNECT_PROJECT_ID || 'default-project-id',
+  chains: [zircuitTestnet, flowTestnet, hederaTestnet],
+  ssr: false,
 });
 
 // Create query client
@@ -271,15 +253,15 @@ const AppContent = () => {
 
 const App = () => {
   return (
-    <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider chains={chains}>
-        <QueryClientProvider client={queryClient}>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
           <Router>
             <AppContent />
           </Router>
-        </QueryClientProvider>
-      </RainbowKitProvider>
-    </WagmiConfig>
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 };
 
