@@ -56,7 +56,7 @@ forge test
 
 # Deploy contracts
 echo "Deploying contracts..."
-forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
+forge script script/Deploy.s.sol --slow --rpc-url $RPC_URL --broadcast
 
 echo "Deployment complete!"
 echo "Check broadcast/Deploy.s.sol/$NETWORK/ for deployment artifacts"
