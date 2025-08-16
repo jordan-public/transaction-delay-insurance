@@ -147,5 +147,42 @@ graph TD
 
 ## Implementation
 
+### Front End
+
+The front end is written in React. It connects to the
+proxy RPC for all interactions. It provides the following user interfaces:
+- Insurance quote and policy parameters,
+- Insurance purchasing,
+- Insurance claims,
+- Claim status and history, and
+- Sample call
+
+### Contracts
+
+The insurance contract manages the policies and their functionality. Initially
+for this prototype there is only one policy for all.
+This policy does the following:
+- Provides read-only pricing, delay threshold and payout information,
+- Provides a purchasing function, which records the number of incidents insured based on purchaser / caller 
+address,
+- Provides a claim / payout function, which checks the delay threshold and the number of incidents insured, and
+processes the claim and payout. The claim itself consists of a transaction broadcast signed by the proxy,
+and a signed transaction confirmation, which serve as
+a proof in the claim. The signatures are checked using the EVM build-in ECDSA verification function and calculated payout is paid to the caller in native (ETH) currency.
+
+The prototype policy works as follows:
+- Each insurance purchase, pays 10%
+of the fee to the protocol owner (deployer), and the rest to
+the policy payout pool.
+- Each insurance purchase pays a configured percentage (1%)
+of the total funds in the pool. This depletes the policy payout pool.
+
+### RPC Proxy
+
+The RPC proxy is a middleware that intercepts the transaction broadcasts and records the timestamps
+and block numbers of the transactions. It also signs the transaction broadcast and confirmation, which are used
+as proofs in the insurance claim. The proxy is implemented as a Node.js application that uses the
+`ethers.js` library to interact with the Ethereum network, in order to get the latest block number before each transaction is broadcast and record it in the response before signing it. It provides a REST API for the
+front end to interact with.
 
 ## Future Work
