@@ -44,19 +44,16 @@ Use the provided deployment script for easy deployment to supported networks:
 
 ```bash
 # Deploy to local network
-./deploy.sh --network local --private-key YOUR_PRIVATE_KEY
-
-# Deploy to Zircuit testnet
-./deploy.sh --network zircuit --private-key YOUR_PRIVATE_KEY --rpc-proxy YOUR_RPC_PROXY_ADDRESS
+./deploy.sh --network local --private-key YOUR_PRIVATE_KEY --rpc-url http://localhost:8545/
 
 # Deploy to Flow EVM testnet
-./deploy.sh --network flow --private-key YOUR_PRIVATE_KEY --rpc-proxy YOUR_RPC_PROXY_ADDRESS
+./deploy.sh --network flow --private-key YOUR_DEPLOYMENT_PRIVATE_KEY --rpc-url https://testnet.evm.nodes.onflow.org/
 
 # Deploy to Hedera EVM testnet  
-./deploy.sh --network hedera --private-key YOUR_PRIVATE_KEY --rpc-proxy YOUR_RPC_PROXY_ADDRESS
+./deploy.sh --network hedera --private-key YOUR_DEPLOYMENT_PRIVATE_KEY --rpc-url https://testnet.hashio.io/api
 
 # Deploy with contract verification (if supported)
-./deploy.sh --network zircuit --verify --etherscan-key YOUR_ETHERSCAN_API_KEY
+./deploy.sh --network zircuit --verify --etherscan-key YOUR_ETHERSCAN_API_KEY --rpc-url https://garfield-testnet.zircuit.com/
 ```
 
 ### Supported Networks
@@ -71,15 +68,16 @@ Use the provided deployment script for easy deployment to supported networks:
 Alternatively, you can set environment variables instead of using flags:
 
 ```bash
+```bash
 # Copy the example environment file
 cp .env.example .env
 
 # Edit .env with your values
-export PRIVATE_KEY=your_private_key
-export RPC_PROXY_ADDRESS=your_rpc_proxy_address
-export ETHERSCAN_API_KEY=your_etherscan_api_key
+export PRIVATE_KEY=your_private_key_for_deployment
+export RPC_PROXY_ADDRESS=your_deployed_rpc_proxy_service_address  # Ethereum address for signature verification
+export ETHERSCAN_API_KEY=your_etherscan_api_key_for_verification
 
-# Deploy using environment variables
+# Deploy using environment variables (RPC URLs are pre-configured)
 ./deploy.sh --network zircuit --verify
 ```
 
