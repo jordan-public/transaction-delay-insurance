@@ -39,20 +39,32 @@ The Transaction Delay Insurance system consists of three main components:
 
 ```mermaid
 sequenceDiagram
+    participant Admin
     participant User
     participant UI
     participant Insurance Contract
     participant RPC Proxy
 
-    User->>UI: Request insurance quote
-    UI->>Insurance Contract: getQuote(txHash, coverage, duration)
-    Insurance Contract-->>UI: premium amount
-    UI-->>User: Display quote
-    User->>UI: Purchase insurance
-    UI->>Insurance Contract: purchaseInsurance(txHash, coverage) + premium
-    Insurance Contract->>Insurance Contract: Create policy
-    Insurance Contract-->>UI: Policy ID
-    UI-->>User: Insurance confirmation
+    Note over Admin, Insurance Contract: Policy Creation (Admin Only)
+    Admin->>Insurance Contract: createPolicy(parameters, thresholds)
+    Insurance Contract->>Insurance Contract: Store policy configuration
+    Insurance Contract-->>Admin: Policy ID created
+
+    Note over User, RPC Proxy: User Purchases Share
+    User->>UI: View available policies
+    UI->>Insurance Contract: getPolicies() / getPolicyDetails(policyId)
+    Insurance Contract-->>UI: Available policies and terms
+    UI-->>User: Display policy options
+    User->>UI: Select policy and ETH amount
+    UI->>Insurance Contract: getShareQuote(policyId, ethAmount)
+    Insurance Contract-->>UI: Coverage details (incidents covered)
+    UI-->>User: Display coverage quote
+    User->>UI: Purchase policy share
+    UI->>Insurance Contract: purchaseShare(policyId) + ETH deposit
+    Insurance Contract->>Insurance Contract: Record ETH amount for caller address
+    Insurance Contract->>Insurance Contract: Calculate incidents covered
+    Insurance Contract-->>UI: Share purchase confirmation
+    UI-->>User: Coverage confirmation with incident count
 ```
 
 #### 2. Transaction Broadcasting with Delay Tracking
