@@ -38,21 +38,79 @@ forge test -vvv
 
 ## Deployment
 
-1. Set environment variables:
+### Quick Deployment with Script
+
+Use the provided deployment script for easy deployment to supported networks:
+
 ```bash
+# Deploy to local network
+./deploy.sh --network local --private-key YOUR_PRIVATE_KEY
+
+# Deploy to Zircuit testnet
+./deploy.sh --network zircuit --private-key YOUR_PRIVATE_KEY --rpc-proxy YOUR_RPC_PROXY_ADDRESS
+
+# Deploy to Flow EVM testnet
+./deploy.sh --network flow --private-key YOUR_PRIVATE_KEY --rpc-proxy YOUR_RPC_PROXY_ADDRESS
+
+# Deploy to Hedera EVM testnet  
+./deploy.sh --network hedera --private-key YOUR_PRIVATE_KEY --rpc-proxy YOUR_RPC_PROXY_ADDRESS
+
+# Deploy with contract verification (if supported)
+./deploy.sh --network zircuit --verify --etherscan-key YOUR_ETHERSCAN_API_KEY
+```
+
+### Supported Networks
+
+- `local` - Local development network (http://localhost:8545)
+- `zircuit` - Zircuit testnet
+- `flow` - Flow EVM testnet
+- `hedera` - Hedera EVM testnet
+
+### Environment Variables
+
+Alternatively, you can set environment variables instead of using flags:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env with your values
 export PRIVATE_KEY=your_private_key
 export RPC_PROXY_ADDRESS=your_rpc_proxy_address
+export ETHERSCAN_API_KEY=your_etherscan_api_key
+
+# Deploy using environment variables
+./deploy.sh --network zircuit --verify
 ```
 
-2. Deploy to local network:
+### Manual Deployment with Forge
+
+For custom configurations or other networks:
+
 ```bash
-forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast
+# Set environment variables
+export PRIVATE_KEY=your_private_key
+export RPC_PROXY_ADDRESS=your_rpc_proxy_address
+
+# Deploy to any network
+forge script script/Deploy.s.sol --rpc-url YOUR_RPC_URL --broadcast
+
+# With verification
+forge script script/Deploy.s.sol --rpc-url YOUR_RPC_URL --broadcast --verify --etherscan-api-key YOUR_ETHERSCAN_API_KEY
 ```
 
-3. Deploy to testnet (example with Sepolia):
-```bash
-forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
-```
+### Deployment Script Features
+
+The `deploy.sh` script provides:
+- ✅ Pre-deployment test execution
+- 🌐 Multi-network support (local, Zircuit, Flow, Hedera)
+- 🔍 Optional contract verification
+- 📋 Automatic address extraction from deployment artifacts
+- 🎨 Colored output for better readability
+- ⚡ Input validation and error handling
+- 📖 Comprehensive help documentation
+
+Use `./deploy.sh --help` for detailed usage information.
 
 ## Contract Interaction
 
