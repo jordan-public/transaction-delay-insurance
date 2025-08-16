@@ -19,6 +19,11 @@ if [[ -z "$PRIVATE_KEY" ]]; then
     exit 1
 fi
 
+if [[ -z "$RPC_PROXY_ADDRESS" ]]; then
+    echo "Warning: RPC_PROXY_ADDRESS not set. Using zero address."
+    export RPC_PROXY_ADDRESS="0x0000000000000000000000000000000000000000"
+fi
+
 # Get network from command line argument
 NETWORK=${1:-"local"}
 
