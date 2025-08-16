@@ -37,7 +37,6 @@ The Transaction Delay Insurance system consists of three main components:
 
 #### 1. Insurance Policy Purchase Flow
 
-<div class="mermaid">
 ```mermaid
 sequenceDiagram
     participant User
@@ -55,7 +54,6 @@ sequenceDiagram
     Insurance Contract-->>UI: Policy ID
     UI-->>User: Insurance confirmation
 ```
-</div>
 
 #### 2. Transaction Broadcasting with Delay Tracking
 
