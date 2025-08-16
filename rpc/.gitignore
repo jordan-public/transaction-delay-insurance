@@ -1,0 +1,34 @@
+# Ignore node modules
+node_modules/
+
+# Ignore logs
+logs/*.log
+*.log
+
+# Ignore environment files (keep samples)
+.env
+.env.local
+.env.production
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore npm debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore coverage
+coverage/
+.nyc_output/
+
+# Ignore temporary files
+*.tmp
+*.temp
