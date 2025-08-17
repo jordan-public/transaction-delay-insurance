@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, formatEther } from 'ethers';
 import toast from 'react-hot-toast';
@@ -6,8 +6,6 @@ import toast from 'react-hot-toast';
 const PurchaseInsurance = ({ policy, policyAbi }) => {
   const { address, isConnected } = useAccount();
   const [ethAmount, setEthAmount] = useState('0.1');
-  const [quote, setQuote] = useState(null);
-  const [loadingQuote, setLoadingQuote] = useState(false);
 
   const { writeContract, data: hash, error, isPending } = useWriteContract();
   
@@ -20,48 +18,28 @@ const PurchaseInsurance = ({ policy, policyAbi }) => {
     address: policy?.policyAddress,
     abi: policyAbi,
     functionName: 'getUserInsurance',
-    args: [address],
-    enabled: isConnected && !!policy && !!address,
+    args: address ? [address] : undefined,
+    query: {
+      enabled: isConnected && !!policy && !!address,
+    }
   });
 
-  // Get quote for the entered ETH amount
-  const getQuote = useCallback(async () => {
-    if (!policy || !ethAmount || parseFloat(ethAmount) <= 0) {
-      setQuote(null);
-      return;
+  // Get quote from contract
+  const { data: quoteData, isLoading: loadingQuote } = useReadContract({
+    address: policy?.policyAddress,
+    abi: policyAbi,
+    functionName: 'getShareQuote',
+    args: [parseEther(ethAmount || '0')],
+    query: {
+      enabled: isConnected && !!policy && !!ethAmount && parseFloat(ethAmount) > 0,
     }
+  });
 
-    try {
-      setLoadingQuote(true);
-      
-      // This should be a read contract call
-      const response = await fetch('/api/getShareQuote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          policyAddress: policy.policyAddress,
-          ethAmount: parseEther(ethAmount).toString(),
-        }),
-      });
-
-      if (response.ok) {
-        const quoteData = await response.json();
-        setQuote(quoteData);
-      }
-    } catch (err) {
-      console.error('Failed to get quote:', err);
-    } finally {
-      setLoadingQuote(false);
-    }
-  }, [policy, ethAmount]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      getQuote();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [ethAmount, policy, getQuote]);
+  // Format the quote data
+  const quote = quoteData ? {
+    premium: quoteData[0],
+    incidentsCovered: quoteData[1]
+  } : null;
 
   useEffect(() => {
     if (isSuccess) {
@@ -87,6 +65,7 @@ const PurchaseInsurance = ({ policy, policyAbi }) => {
         address: policy.policyAddress,
         abi: policyAbi,
         functionName: 'purchaseShare',
+        args: [],
         value: parseEther(ethAmount),
       });
     } catch (err) {
@@ -127,17 +106,17 @@ const PurchaseInsurance = ({ policy, policyAbi }) => {
         <p className="text-sm text-gray-500">{policy.description}</p>
       </div>
 
-      {userInsurance && (
+      {userInsurance && Array.isArray(userInsurance) && userInsurance.length >= 3 && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <h3 className="font-semibold text-blue-900 mb-2">Your Current Coverage</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-blue-700">ETH Deposited:</span>
-              <p className="font-medium">{formatEther(userInsurance.ethDeposited || 0)} ETH</p>
+              <p className="font-medium">{formatEther(userInsurance[0] || 0)} ETH</p>
             </div>
             <div>
               <span className="text-blue-700">Incidents Remaining:</span>
-              <p className="font-medium">{userInsurance.incidentsRemaining?.toString() || '0'}</p>
+              <p className="font-medium">{userInsurance[1]?.toString() || '0'}</p>
             </div>
           </div>
         </div>
@@ -184,13 +163,6 @@ const PurchaseInsurance = ({ policy, policyAbi }) => {
         ) : null}
 
         <div className="flex justify-end space-x-4">
-          <button
-            onClick={getQuote}
-            className="btn-secondary"
-            disabled={loadingQuote || !ethAmount}
-          >
-            {loadingQuote ? 'Getting Quote...' : 'Get Quote'}
-          </button>
           <button
             onClick={handlePurchase}
             className="btn-primary"

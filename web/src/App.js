@@ -225,6 +225,16 @@ const POLICY_ABI = [
     "type": "function"
   },
   {
+    "inputs": [{"type": "uint256", "name": "ethAmount"}],
+    "name": "getShareQuote",
+    "outputs": [
+      {"name": "premium", "type": "uint256"},
+      {"name": "incidentsCovered", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "purchaseShare",
     "outputs": [],
