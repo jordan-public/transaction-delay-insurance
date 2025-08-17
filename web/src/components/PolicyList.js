@@ -1,42 +1,72 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { 
-  useAccount, 
-  useChainId, 
-  useReadContract
-} from 'wagmi';
-import { formatEther } from 'ethers';
+import { useReadContract } from 'wagmi';
 
-const PolicyList = ({ policyFactoryAddress, policyFactoryAbi, onPolicySelect }) => {
-  const { isConnected } = useAccount();
+/**
+ * @typedef {Object} Policy
+ * @property {string} id
+ * @property {string} policyAddress
+ * @property {string} name
+ * @property {string} description
+ * @property {bigint|number|string} createdAt
+ * @property {boolean} active
+ */
+
+/** @param {{ policyFactoryAddress: string, policyFactoryAbi: any, onPolicySelect?: (p: any)=>void, chainId?: number }} props */
+const PolicyList = ({ policyFactoryAddress, policyFactoryAbi, onPolicySelect, chainId }) => {
+  /** @type {[Policy[], Function]} */
   const [policies, setPolicies] = useState([]);
-  const [loading, setLoading] = useState(false);
+  /** @type {[Policy|null, Function]} */
   const [selectedPolicy, setSelectedPolicy] = useState(null);
 
   // Read active policies from contract
-  const { data: activePoliciesData, isLoading, refetch } = useReadContract({
+  const { data: activePoliciesData, isLoading, error, refetch, isError } = useReadContract({
     address: policyFactoryAddress,
     abi: policyFactoryAbi,
     functionName: 'getActivePolicies',
-    enabled: isConnected && !!policyFactoryAddress,
+    chainId,
+    query: {
+      enabled: !!policyFactoryAddress, // Enable even without wallet connection for read-only
+    }
   });
 
   useEffect(() => {
-    if (activePoliciesData && Array.isArray(activePoliciesData) && activePoliciesData.length === 2) {
-      const [policyIds, policyInfos] = activePoliciesData;
-      const formattedPolicies = policyIds.map((id, index) => ({
-        id: id.toString(),
-        ...policyInfos[index],
-      }));
-      setPolicies(formattedPolicies);
+    try {
+      if (
+        activePoliciesData &&
+        Array.isArray(activePoliciesData) &&
+        activePoliciesData.length >= 2 &&
+        Array.isArray(activePoliciesData[0]) &&
+        Array.isArray(activePoliciesData[1])
+      ) {
+        const [policyIds, policyInfos] = activePoliciesData;
+        const formattedPolicies = policyIds.map((id, index) => {
+          const info = policyInfos[index] || {};
+          return {
+            id: (typeof id === 'bigint' ? id.toString() : String(id)),
+            policyAddress: info.policyAddress,
+            name: info.name,
+            description: info.description,
+            createdAt: info.createdAt,
+            active: info.active,
+          };
+        });
+        setPolicies(formattedPolicies);
+      } else {
+        setPolicies([]);
+      }
+    } catch (e) {
+      // keep policies as is, error will be rendered
     }
-  }, [activePoliciesData]);
+  }, [activePoliciesData, isLoading, error]);
 
   const handleRefresh = () => {
     refetch();
   };
 
   const formatTimestamp = (timestamp) => {
-    return new Date(Number(timestamp) * 1000).toLocaleDateString();
+    const n = typeof timestamp === 'bigint' ? Number(timestamp) : Number(timestamp || 0);
+    return new Date(n * 1000).toLocaleDateString();
   };
 
   const handlePolicySelect = (policy) => {
@@ -44,11 +74,11 @@ const PolicyList = ({ policyFactoryAddress, policyFactoryAbi, onPolicySelect }) 
     onPolicySelect?.(policy);
   };
 
-  if (!isConnected) {
+  if (!policyFactoryAddress) {
     return (
       <div className="card">
         <div className="text-center py-8">
-          <p className="text-gray-500">Please connect your wallet to view policies</p>
+          <p className="text-gray-500">Policy factory address not configured</p>
         </div>
       </div>
     );
@@ -73,6 +103,12 @@ const PolicyList = ({ policyFactoryAddress, policyFactoryAbi, onPolicySelect }) 
           )}
         </button>
       </div>
+
+      {isError && (
+        <div className="mb-4 p-3 rounded bg-red-50 text-red-700 border border-red-200 text-sm break-words">
+          Error loading policies: {String(error?.message || error)}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center py-8">

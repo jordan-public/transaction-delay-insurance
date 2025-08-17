@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { RainbowKitProvider, connectorsForWallets } from '@rainbow-me/rainbowkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { metaMaskWallet } from '@rainbow-me/rainbowkit/wallets';
 
 import Header from './components/Header';
 import CreatePolicyForm from './components/CreatePolicyForm';
@@ -12,59 +13,120 @@ import PurchaseInsurance from './components/PurchaseInsurance';
 import SampleTransaction from './components/SampleTransaction';
 import InsuranceClaim from './components/InsuranceClaim';
 
-import { NETWORKS, getNetworkById } from './config/networks';
-import { useRpcProxy } from './hooks/useRpcProxy';
+import { NETWORKS } from './config/networks';
 
-// Define chains for Wagmi v2
-const zircuitTestnet = {
-  id: NETWORKS.ZIRCUIT.id,
-  name: NETWORKS.ZIRCUIT.name,
-  nativeCurrency: NETWORKS.ZIRCUIT.nativeCurrency,
+// Define Hedera Testnet chain explicitly for Wagmi
+const hederaTestnetChain = {
+  id: 296,
+  name: 'Hedera Testnet',
+  nativeCurrency: { name: 'HBAR', symbol: 'HBAR', decimals: 18 },
   rpcUrls: {
-    default: { http: [NETWORKS.ZIRCUIT.rpcUrl] },
+    default: { http: ['https://testnet.hashio.io/api'] },
   },
   blockExplorers: {
-    default: { name: 'Zircuit Explorer', url: NETWORKS.ZIRCUIT.blockExplorer },
+    default: { name: 'HashScan', url: 'https://hashscan.io/testnet' },
   },
   testnet: true,
 };
 
-const flowTestnet = {
-  id: NETWORKS.FLOW.id,
-  name: NETWORKS.FLOW.name,
-  nativeCurrency: NETWORKS.FLOW.nativeCurrency,
-  rpcUrls: {
-    default: { http: [NETWORKS.FLOW.rpcUrl] },
-  },
-  blockExplorers: {
-    default: { name: 'Flow Explorer', url: NETWORKS.FLOW.blockExplorer },
-  },
-  testnet: true,
-};
+// Configure Wagmi v2 with a minimal, safe wallet set (exclude Coinbase) and disable autoConnect
+const walletConnectProjectId = process.env.REACT_APP_WC_PROJECT_ID || 'demo';
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: 'Popular',
+      wallets: [metaMaskWallet],
+    },
+  ],
+  {
+    appName: 'Transaction Delay Insurance',
+  projectId: walletConnectProjectId,
+  }
+);
 
-const hederaTestnet = {
-  id: NETWORKS.HEDERA.id,
-  name: NETWORKS.HEDERA.name,
-  nativeCurrency: NETWORKS.HEDERA.nativeCurrency,
-  rpcUrls: {
-    default: { http: [NETWORKS.HEDERA.rpcUrl] },
+const config = createConfig({
+  connectors,
+  chains: [hederaTestnetChain],
+  transports: {
+    [hederaTestnetChain.id]: http(hederaTestnetChain.rpcUrls.default.http[0]),
   },
-  blockExplorers: {
-    default: { name: 'Hedera Explorer', url: NETWORKS.HEDERA.blockExplorer },
-  },
-  testnet: true,
-};
-
-// Configure Wagmi v2
-const config = getDefaultConfig({
-  appName: 'Transaction Delay Insurance',
-  projectId: process.env.REACT_APP_WALLETCONNECT_PROJECT_ID || 'default-project-id',
-  chains: [zircuitTestnet, flowTestnet, hederaTestnet],
-  ssr: false,
 });
 
 // Create query client
 const queryClient = new QueryClient();
+
+// Error Boundary for wallet connection issues
+class WalletErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    // Update state so the next render will show the fallback UI
+    return { hasError: true, error: error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // Log the error for debugging
+    console.error('Wallet connection error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      // Check if it's the specific accounts.map error
+      const errorString = String(this.state.error || '');
+      if (errorString.includes('accounts.map is not a function')) {
+        return (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 m-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Wallet Connection Issue
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    There's a temporary issue with wallet connection. Please refresh the page or try a different wallet.
+                  </p>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="mt-2 bg-yellow-200 text-yellow-800 px-3 py-1 rounded text-sm hover:bg-yellow-300"
+                  >
+                    Refresh Page
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Fallback UI for other errors
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 m-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Something went wrong
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>An error occurred while loading the application.</p>
+                <button 
+                  onClick={() => this.setState({ hasError: false, error: null })} 
+                  className="mt-2 bg-red-200 text-red-800 px-3 py-1 rounded text-sm hover:bg-red-300"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Sample ABIs (replace with actual contract ABIs)
 const POLICY_FACTORY_ABI = [
@@ -177,10 +239,11 @@ const Navigation = () => {
 // Main App component
 const AppContent = () => {
   const [selectedPolicy, setSelectedPolicy] = useState(null);
-  const [currentNetwork, setCurrentNetwork] = useState(NETWORKS.ZIRCUIT);
+  const currentNetwork = NETWORKS.HEDERA;
 
   // Get contract addresses for current network
-  const policyFactoryAddress = '0x...'; // Replace with actual deployed address
+    // Contract Configuration
+  const policyFactoryAddress = '0x1ffe05ace98e3a2175d647fbe100062bb190e285'; // Deployed PolicyFactory on Hedera Testnet
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -194,6 +257,7 @@ const AppContent = () => {
               <PolicyList
                 policyFactoryAddress={policyFactoryAddress}
                 policyFactoryAbi={POLICY_FACTORY_ABI}
+                chainId={hederaTestnetChain.id}
                 onPolicySelect={setSelectedPolicy}
               />
             </div>
@@ -216,6 +280,7 @@ const AppContent = () => {
               <PolicyList
                 policyFactoryAddress={policyFactoryAddress}
                 policyFactoryAbi={POLICY_FACTORY_ABI}
+                chainId={hederaTestnetChain.id}
                 onPolicySelect={setSelectedPolicy}
               />
               <PurchaseInsurance
@@ -234,6 +299,7 @@ const AppContent = () => {
               <PolicyList
                 policyFactoryAddress={policyFactoryAddress}
                 policyFactoryAbi={POLICY_FACTORY_ABI}
+                chainId={hederaTestnetChain.id}
                 onPolicySelect={setSelectedPolicy}
               />
               <InsuranceClaim
@@ -252,16 +318,30 @@ const AppContent = () => {
 };
 
 const App = () => {
+  // Clear any persisted last-used wallet/connector to avoid Coinbase auto-reconnect
+  useEffect(() => {
+    try {
+      const keysToClear = [
+        'wagmi.recentConnectorId',
+        'rk-last-used-wallet',
+        'rainbowkit.recentConnectorId',
+      ];
+      keysToClear.forEach((k) => localStorage.removeItem(k));
+    } catch {}
+  }, []);
+
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <WalletErrorBoundary>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </WalletErrorBoundary>
   );
 };
 

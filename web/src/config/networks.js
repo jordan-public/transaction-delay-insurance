@@ -55,7 +55,7 @@ export const CONTRACT_ADDRESSES = {
     samplePolicy: '0x...',
   },
   [NETWORKS.HEDERA.id]: {
-    policyFactory: '0x...',
+    policyFactory: '0x1ffe05ace98e3a2175d647fbe100062bb190e285', // Deployed on Hedera Testnet
     samplePolicy: '0x...',
   },
 };
