@@ -33,6 +33,17 @@ The Transaction Delay Insurance system consists of three main components:
 2. **RPC Proxy** - Records transaction timestamps and provides delay proofs
 3. **User Interface** - Allows users to interact with the system
 
+### Components
+
+```mermaid
+graph LR
+    A[Web UI] --> B[RPC Proxy]
+    B --> C[RPC Blockchain Node]
+```
+
+We implement the Web UI and the RPC Proxy.
+The contracts are deployed on the Blockchain.
+
 ### Interaction Diagrams
 
 #### 1. Insurance Policy Purchase Flow
