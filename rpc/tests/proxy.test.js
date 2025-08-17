@@ -8,12 +8,6 @@ describe('RPC Proxy Server', () => {
   beforeAll(async () => {
     // Set test environment
     process.env.NODE_ENV = 'test';
-    process.env.NETWORK = 'zircuit';
-  process.env.ZIRCUIT_RPC_URL = 'https://garfield-testnet.zircuit.com/';
-  process.env.ZIRCUIT_CHAIN_ID = '48898';
-  process.env.ZIRCUIT_NETWORK_NAME = 'Zircuit Garfield Testnet';
-    process.env.SIGNING_MNEMONIC = 'test test test test test test test test test test test junk';
-    process.env.LOG_LEVEL = 'error';
 
     server = new RPCProxyServer();
     await server.initialize();

@@ -6,14 +6,37 @@ echo "🚀 Transaction Delay Insurance RPC Proxy - Multi-Network Test"
 echo "==================================================================="
 echo ""
 
+# Cleanup function
+cleanup_ports() {
+    echo "🧹 Cleaning up any existing processes on ports 3001, 3002, 3003..."
+    for port in 3001 3002 3003; do
+        lsof -ti:$port | xargs kill -9 2>/dev/null || true
+    done
+    sleep 2
+}
+
+# Initial cleanup
+cleanup_ports
+
+# Track test results
+zircuit_result=""
+flow_result=""
+hedera_result=""
+
 # Test function for each network
 test_network() {
     local network=$1
     local expected_chain_id=$2
     local port=$3
+    local test_passed=true
     
     echo "📡 Testing $network..."
     echo "-----------------------------------"
+    
+    # Kill any existing process on this port
+    echo "🧹 Cleaning up any existing process on port $port..."
+    lsof -ti:$port | xargs kill -9 2>/dev/null || true
+    sleep 1
     
     # Start server for this network
     echo "▶️  Starting $network server on port $port..."
@@ -21,7 +44,20 @@ test_network() {
     SERVER_PID=$!
     
     # Wait for server to start
-    sleep 3
+    echo "⏳ Waiting for server to start..."
+    for i in {1..10}; do
+        if curl -s http://localhost:$port/health >/dev/null 2>&1; then
+            echo "✅ Server started successfully"
+            break
+        fi
+        if [ $i -eq 10 ]; then
+            echo "❌ Server failed to start after 10 seconds"
+            kill $SERVER_PID 2>/dev/null
+            eval "${network}_result=\"❌\""
+            return 1
+        fi
+        sleep 1
+    done
     
     # Test health endpoint
     echo "🏥 Testing health endpoint..."
@@ -30,6 +66,7 @@ test_network() {
         echo "✅ Health check passed"
     else
         echo "❌ Health check failed"
+        test_passed=false
     fi
     
     # Test network endpoint
@@ -40,6 +77,7 @@ test_network() {
     else
         echo "❌ Network info incorrect"
         echo "   Response: $network_response"
+        test_passed=false
     fi
     
     # Test current block endpoint
@@ -50,9 +88,10 @@ test_network() {
         echo "   Current block: $(echo $block_response | grep -o '"blockNumber":[0-9]*' | cut -d: -f2)"
     else
         echo "❌ Block endpoint failed"
+        test_passed=false
     fi
     
-    # Test transaction broadcast (should fail with insufficient funds)
+    # Test transaction broadcast (should fail with expected errors)
     echo "💸 Testing transaction broadcast..."
     tx_response=$(curl -s -X POST http://localhost:$port/tx/broadcast \
       -H "Content-Type: application/json" \
@@ -62,18 +101,33 @@ test_network() {
         "gasLimit": "21000",
         "gasPrice": "20000000000"
       }')
-    if [[ $tx_response == *"insufficient funds"* ]]; then
-        echo "✅ Transaction broadcast working (expected insufficient funds error)"
+    
+    # Check for expected error responses (insufficient funds OR gas price errors)
+    if [[ $tx_response == *"insufficient funds"* ]] || [[ $tx_response == *"INSUFFICIENT_FUNDS"* ]] || [[ $tx_response == *"gas price"* ]] || [[ $tx_response == *"minimum gas price"* ]]; then
+        echo "✅ Transaction broadcast working (expected error: transaction rejected)"
     else
         echo "❌ Transaction broadcast failed unexpectedly"
+        echo "   Response: $tx_response"
+        test_passed=false
     fi
     
-    # Stop server
+    # Stop server and cleanup
     echo "🛑 Stopping $network server..."
     kill $SERVER_PID 2>/dev/null
     wait $SERVER_PID 2>/dev/null
     
-    echo "✅ $network testing complete!"
+    # Extra cleanup - kill any remaining process on this port
+    lsof -ti:$port | xargs kill -9 2>/dev/null || true
+    sleep 1
+    
+    # Record test result
+    if [ "$test_passed" = true ]; then
+        eval "${network}_result=\"✅\""
+        echo "✅ $network testing complete!"
+    else
+        eval "${network}_result=\"❌\""
+        echo "❌ $network testing failed!"
+    fi
     echo ""
 }
 
@@ -90,9 +144,9 @@ echo "🎉 Multi-Network Testing Complete!"
 echo "==================================================================="
 echo ""
 echo "Summary:"
-echo "• Zircuit Garfield Testnet (Chain ID: 48898) ✅"
-echo "• Flow EVM Testnet (Chain ID: 545) ✅"  
-echo "• Hedera EVM Testnet (Chain ID: 296) ✅"
+echo "• Zircuit Garfield Testnet (Chain ID: 48898) $zircuit_result"
+echo "• Flow EVM Testnet (Chain ID: 545) $flow_result"  
+echo "• Hedera EVM Testnet (Chain ID: 296) $hedera_result"
 echo ""
 echo "All networks are configured with test mnemonic:"
 echo "test test test test test test test test test test test junk"

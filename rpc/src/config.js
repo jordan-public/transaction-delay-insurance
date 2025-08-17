@@ -1,4 +1,6 @@
-require('dotenv').config();
+// Load environment-specific .env file
+const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+require('dotenv').config({ path: envFile });
 const Joi = require('joi');
 
 const configSchema = Joi.object({
