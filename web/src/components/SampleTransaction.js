@@ -1,20 +1,39 @@
-import React, { useState } from 'react';
-import { useAccount } from 'wagmi';
-import { parseEther, parseUnits } from 'ethers';
+import React, { useState, useEffect } from 'react';
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther } from 'ethers';
 import { useRpcProxy } from '../hooks/useRpcProxy';
 import toast from 'react-hot-toast';
 
 const SampleTransaction = ({ network }) => {
   const { isConnected } = useAccount();
-  const { broadcastTransaction, isConnected: proxyConnected, loading } = useRpcProxy(network?.id);
+  const { isConnected: proxyConnected } = useRpcProxy(network?.id);
   const [txData, setTxData] = useState({
     to: '0x1234567890123456789012345678901234567890',
     value: '0.001',
     gasLimit: '21000',
     gasPrice: '20',
   });
-  const [result, setResult] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { sendTransaction, data: hash, error, isPending } = useSendTransaction();
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  // Handle transaction success
+  useEffect(() => {
+    if (isSuccess && hash) {
+      toast.success('Transaction submitted and intercepted by RPC Proxy!');
+      console.log('Transaction hash:', hash);
+    }
+  }, [isSuccess, hash]);
+
+  // Handle transaction errors
+  useEffect(() => {
+    if (error) {
+      console.error('Transaction error:', error);
+    }
+  }, [error]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -35,24 +54,19 @@ const SampleTransaction = ({ network }) => {
     }
 
     try {
-      setIsSubmitting(true);
-      setResult(null);
-
-      const transactionData = {
+      // Use wallet to sign and send transaction
+      // This will automatically go through the RPC proxy if configured correctly
+      sendTransaction({
         to: txData.to,
-        value: parseEther(txData.value).toString(),
-        gasLimit: txData.gasLimit,
-        gasPrice: parseUnits(txData.gasPrice, 'gwei').toString(),
-      };
-
-      const response = await broadcastTransaction(transactionData);
-      setResult(response);
-      toast.success('Transaction submitted to RPC Proxy!');
+        value: parseEther(txData.value),
+      });
     } catch (err) {
       console.error('Failed to submit transaction:', err);
-      toast.error(`Failed to submit transaction: ${err.message}`);
-    } finally {
-      setIsSubmitting(false);
+      if (err?.message?.includes('User rejected')) {
+        toast.error('Transaction rejected by user');
+      } else {
+        toast.error(`Failed to submit transaction: ${err?.message || err}`);
+      }
     }
   };
 
@@ -63,7 +77,6 @@ const SampleTransaction = ({ network }) => {
       gasLimit: '21000',
       gasPrice: '20',
     });
-    setResult(null);
   };
 
   return (
@@ -149,19 +162,24 @@ const SampleTransaction = ({ network }) => {
             type="button"
             onClick={resetForm}
             className="btn-secondary"
-            disabled={isSubmitting}
+            disabled={isPending}
           >
             Reset
           </button>
           <button
             type="submit"
             className="btn-primary"
-            disabled={!isConnected || !proxyConnected || isSubmitting || loading}
+            disabled={!isConnected || !proxyConnected || isPending || isConfirming}
           >
-            {isSubmitting ? (
+            {isPending ? (
               <>
                 <span className="spinner mr-2"></span>
                 Submitting...
+              </>
+            ) : isConfirming ? (
+              <>
+                <span className="spinner mr-2"></span>
+                Confirming...
               </>
             ) : (
               'Submit Transaction'
@@ -170,26 +188,26 @@ const SampleTransaction = ({ network }) => {
         </div>
       </form>
 
-      {result && (
+      {hash && (
         <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-          <h3 className="font-semibold text-green-900 mb-2">Transaction Result</h3>
+          <h3 className="font-semibold text-green-900 mb-2">Transaction Submitted</h3>
           <div className="space-y-2 text-sm">
             <div>
               <span className="text-green-700">Transaction Hash:</span>
-              <p className="font-mono break-all">{result.txHash}</p>
+              <p className="font-mono break-all">{hash}</p>
             </div>
-            <div>
-              <span className="text-green-700">Broadcast Block:</span>
-              <p className="font-mono">{result.broadcastBlock}</p>
-            </div>
-            <div>
-              <span className="text-green-700">Status:</span>
-              <span className={`ml-2 status-${result.status}`}>{result.status}</span>
-            </div>
-            <div>
-              <span className="text-green-700">Timestamp:</span>
-              <p className="font-mono">{new Date(result.timestamp).toLocaleString()}</p>
-            </div>
+            {isConfirming && (
+              <div>
+                <span className="text-yellow-700">Status:</span>
+                <span className="ml-2 text-yellow-700">Confirming...</span>
+              </div>
+            )}
+            {isSuccess && (
+              <div>
+                <span className="text-green-700">Status:</span>
+                <span className="ml-2 text-green-700">Confirmed!</span>
+              </div>
+            )}
           </div>
         </div>
       )}
