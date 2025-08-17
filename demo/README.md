@@ -1,6 +1,6 @@
 # Demo and Video
 
-## The Video is [here](../TXDelayInsurance.mp4) and on [YouTube]().
+## The Video is [here](../TXDelayInsurance.mp4) and on [YouTube](https://youtu.be/xz2jNhx2ZV8).
 
 ## Deployment addresses
 
