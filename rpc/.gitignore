@@ -9,6 +9,7 @@ logs/*.log
 .env
 .env.local
 .env.production
+.env.testnet
 
 # Ignore IDE files
 .vscode/

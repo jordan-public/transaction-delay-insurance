@@ -94,6 +94,11 @@ class RPCProxyServer {
             return { jsonrpc: '2.0', id, result: String(Number(config.currentNetwork.chainId)) };
           }
 
+          // Intercept transaction broadcasting to create delay proofs
+          if (method === 'eth_sendRawTransaction') {
+            return await this.handleTransactionBroadcast(payload);
+          }
+
           // Forward other RPC methods to the upstream node
           const upstream = await axios.post(
             config.currentNetwork.rpcUrl,
@@ -411,6 +416,146 @@ class RPCProxyServer {
         message: config.nodeEnv === 'development' ? error.message : 'Something went wrong'
       });
     });
+  }
+
+  // Handle RPC transaction broadcast interception
+  async handleTransactionBroadcast(payload) {
+    try {
+      const { id, params } = payload;
+      const [rawTx] = params;
+
+      if (!rawTx) {
+        return {
+          jsonrpc: '2.0',
+          id,
+          error: { code: -32602, message: 'Invalid params: missing raw transaction' }
+        };
+      }
+
+      // Record broadcast timestamp and block number
+      const timestamp = Date.now();
+      const broadcastBlock = await this.blockchainService?.getCurrentBlockNumber();
+
+      this.logger.info('Intercepting transaction broadcast', {
+        timestamp,
+        broadcastBlock,
+        rawTxLength: rawTx.length
+      });
+
+      // Forward to upstream RPC
+      const upstream = await axios.post(
+        config.currentNetwork.rpcUrl,
+        payload,
+        { headers: { 'content-type': 'application/json' } }
+      );
+
+      // If successful, store transaction for monitoring
+      if (upstream.data?.result) {
+        const txHash = upstream.data.result;
+        
+        // Store broadcast information
+        this.transactionCache?.storeBroadcast(txHash, broadcastBlock, timestamp);
+        
+        // Start monitoring this transaction in the background
+        this.monitorTransactionInBackground(txHash).catch(err => {
+          this.logger.error('Background transaction monitoring failed', {
+            txHash,
+            error: err.message
+          });
+        });
+
+        this.logger.info('Transaction broadcast intercepted and forwarded', {
+          txHash,
+          broadcastBlock,
+          timestamp
+        });
+      }
+
+      // Return the upstream response transparently
+      return upstream.data;
+
+    } catch (err) {
+      this.logger.error('Transaction broadcast interception failed', {
+        error: err.message,
+        payload: payload
+      });
+
+      // Return upstream error or generic error
+      return {
+        jsonrpc: '2.0',
+        id: payload?.id ?? null,
+        error: {
+          code: -32603,
+          message: 'Transaction broadcast failed',
+          data: err?.response?.data || err?.message || String(err)
+        }
+      };
+    }
+  }
+
+  // Monitor transaction confirmation and create delay proof automatically
+  async monitorTransactionInBackground(txHash) {
+    const maxRetries = 60; // Monitor for up to 10 minutes (60 * 10s intervals)
+    let retries = 0;
+
+    const monitor = async () => {
+      try {
+        const receipt = await this.blockchainService?.getTransactionReceipt(txHash);
+        
+        if (receipt) {
+          // Transaction confirmed
+          const confirmationBlock = receipt.blockNumber;
+          this.transactionCache?.storeConfirmation(txHash, confirmationBlock, receipt);
+
+          // Create delay proof automatically
+          const cachedData = this.transactionCache?.getTransaction(txHash);
+          if (cachedData?.broadcastBlock && confirmationBlock) {
+            const delayBlocks = confirmationBlock - cachedData.broadcastBlock;
+            
+            // Create and store the delay proof
+            const proof = await this.blockchainService?.signDelayProof(
+              txHash,
+              cachedData.broadcastBlock,
+              confirmationBlock
+            );
+
+            this.logger.info('Automatic delay proof created', {
+              txHash,
+              delayBlocks,
+              broadcastBlock: cachedData.broadcastBlock,
+              confirmationBlock,
+              proofCreated: !!proof
+            });
+          }
+
+          return; // Monitoring complete
+        }
+
+        // Not confirmed yet, continue monitoring
+        retries++;
+        if (retries < maxRetries) {
+          setTimeout(monitor, 10000); // Check again in 10 seconds
+        } else {
+          this.logger.warn('Transaction monitoring timeout', {
+            txHash,
+            maxRetries
+          });
+        }
+
+      } catch (err) {
+        this.logger.error('Transaction monitoring error', {
+          txHash,
+          error: err.message,
+          retries
+        });
+
+        // Store failure information
+        this.transactionCache?.storeFailure(txHash, err.message);
+      }
+    };
+
+    // Start monitoring
+    monitor();
   }
 
   async monitorTransaction(txHash) {
