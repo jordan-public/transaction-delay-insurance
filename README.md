@@ -1,5 +1,9 @@
 # Transaction Delay Insurance
 
+## Demo and Video
+
+The demo instructions and Video are [here](./demo/README.md).
+
 ## Abstract
 
 This project provides a solution for mitigating the inconvenience and financial loss caused by transaction delays in Ethereum Virtual Machine (EVM) networks. It introduces a smart contract that acts as an insurance provider, allowing users to reclaim losses incurred due to delays without modifying their original transactions. The solution also uses an RPC proxy to record proof of transaction delays, enabling efficient claim processing.

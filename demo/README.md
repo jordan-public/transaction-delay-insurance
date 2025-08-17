@@ -1,5 +1,7 @@
 # Demo and Video
 
+## The Video is [here](../TXDelayInsurance.mp4) and on [YouTube]().
+
 ## Deployment addresses
 
 Hedera Testnet:
