@@ -21,7 +21,9 @@ describe('RPC Proxy Server', () => {
   });
 
   afterAll(async () => {
-    // Cleanup if needed
+    if (server && typeof server.stop === 'function') {
+      await server.stop();
+    }
   });
 
   describe('Health Endpoints', () => {

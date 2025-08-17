@@ -16,6 +16,7 @@ class RPCProxyServer {
     this.logger = createLogger(config.logLevel);
     this.blockchainService = null;
     this.transactionCache = null;
+  this.httpServer = null;
     
     this.setupMiddleware();
     this.setupRoutes();
@@ -229,8 +230,14 @@ class RPCProxyServer {
         
         // If not in cache or not confirmed, try to get from blockchain
         if (!cachedData || cachedData.status === 'broadcast') {
-          const receipt = await this.blockchainService.getTransactionReceipt(txHash);
-          
+          let receipt = null;
+          try {
+            receipt = await this.blockchainService.getTransactionReceipt(txHash);
+          } catch (err) {
+            // Treat invalid or unknown hashes as not found rather than 500
+            const msg = (err && err.message) ? err.message : String(err);
+            this.logger.warn(`Receipt lookup failed for ${txHash}: ${msg}`);
+          }
           if (receipt) {
             const confirmationBlock = receipt.blockNumber;
             cachedData = this.transactionCache.storeConfirmation(
@@ -450,7 +457,7 @@ class RPCProxyServer {
     try {
       await this.initialize();
       
-      this.app.listen(config.port, () => {
+      this.httpServer = this.app.listen(config.port, () => {
         this.logger.info(`RPC Proxy server running on port ${config.port}`);
         this.logger.info(`Network: ${config.currentNetwork.networkName}`);
         this.logger.info(`Environment: ${config.nodeEnv}`);
@@ -458,6 +465,20 @@ class RPCProxyServer {
     } catch (error) {
       this.logger.error('Failed to start server:', error);
       process.exit(1);
+    }
+  }
+
+  async stop() {
+    try {
+      if (this.transactionCache && typeof this.transactionCache.stopCleanupInterval === 'function') {
+        this.transactionCache.stopCleanupInterval();
+      }
+      if (this.httpServer && typeof this.httpServer.close === 'function') {
+        await new Promise((resolve) => this.httpServer.close(resolve));
+        this.httpServer = null;
+      }
+    } catch (error) {
+      this.logger.error('Error during RPCProxyServer stop():', error);
     }
   }
 }

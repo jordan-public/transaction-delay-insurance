@@ -5,17 +5,30 @@ class TransactionCache {
     this.config = config;
     this.logger = createLogger(config.logLevel);
     this.cache = new Map();
+    this.cleanupInterval = null;
     
     // Start cleanup interval
     this.startCleanupInterval();
   }
 
   startCleanupInterval() {
-    setInterval(() => {
+    this.cleanupInterval = setInterval(() => {
       this.cleanup();
     }, this.config.cache.cleanupIntervalMs);
+    // Prevent keeping the event loop alive in tests and short-lived runs
+    if (this.cleanupInterval && typeof this.cleanupInterval.unref === 'function') {
+      this.cleanupInterval.unref();
+    }
     
     this.logger.info(`Transaction cache cleanup interval set to ${this.config.cache.cleanupIntervalMs}ms`);
+  }
+
+  stopCleanupInterval() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      this.logger.info('Stopped transaction cache cleanup interval');
+    }
   }
 
   cleanup() {
