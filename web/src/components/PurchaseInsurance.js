@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, formatEther } from 'ethers';
 import toast from 'react-hot-toast';
@@ -25,7 +25,7 @@ const PurchaseInsurance = ({ policy, policyAbi }) => {
   });
 
   // Get quote for the entered ETH amount
-  const getQuote = async () => {
+  const getQuote = useCallback(async () => {
     if (!policy || !ethAmount || parseFloat(ethAmount) <= 0) {
       setQuote(null);
       return;
@@ -53,7 +53,7 @@ const PurchaseInsurance = ({ policy, policyAbi }) => {
     } finally {
       setLoadingQuote(false);
     }
-  };
+  }, [policy, ethAmount]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -61,7 +61,7 @@ const PurchaseInsurance = ({ policy, policyAbi }) => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [ethAmount, policy]);
+  }, [ethAmount, policy, getQuote]);
 
   useEffect(() => {
     if (isSuccess) {

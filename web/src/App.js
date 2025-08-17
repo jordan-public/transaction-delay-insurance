@@ -13,7 +13,7 @@ import PurchaseInsurance from './components/PurchaseInsurance';
 import SampleTransaction from './components/SampleTransaction';
 import InsuranceClaim from './components/InsuranceClaim';
 
-import { NETWORKS } from './config/networks';
+import { NETWORKS, DEFAULT_NETWORK, getRpcProxyUrl, getContractAddresses } from './config/networks';
 
 // Define Hedera Testnet chain explicitly for Wagmi
 const hederaTestnetChain = {
@@ -29,8 +29,51 @@ const hederaTestnetChain = {
   testnet: true,
 };
 
+// Define Zircuit Garfield Testnet chain (using local RPC proxy by default)
+const zircuitGarfieldChain = {
+  id: 48898,
+  name: 'Zircuit Garfield Testnet',
+  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    // Prefer local proxy; fall back to public if needed
+    default: { http: [getRpcProxyUrl(NETWORKS.ZIRCUIT)] },
+  },
+  blockExplorers: {
+    default: { name: 'Zircuit Explorer', url: 'https://explorer.garfield-testnet.zircuit.com' },
+  },
+  testnet: true,
+};
+
+// Define Flow EVM Testnet
+const flowEvmTestnetChain = {
+  id: 545,
+  name: 'Flow EVM Testnet',
+  nativeCurrency: { name: 'FLOW', symbol: 'FLOW', decimals: 18 },
+  rpcUrls: {
+    default: { http: [NETWORKS.FLOW.rpcUrl] },
+  },
+  blockExplorers: {
+    default: { name: 'Flowscan', url: NETWORKS.FLOW.blockExplorer },
+  },
+  testnet: true,
+};
+
+// Define Local Anvil
+const localAnvilChain = {
+  id: 31337,
+  name: 'Local Anvil',
+  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: [NETWORKS.LOCAL.rpcUrl] },
+  },
+  blockExplorers: {
+    default: { name: 'Local', url: NETWORKS.LOCAL.blockExplorer || '' },
+  },
+  testnet: true,
+};
+
 // Configure Wagmi v2 with a minimal, safe wallet set (exclude Coinbase) and disable autoConnect
-const walletConnectProjectId = process.env.REACT_APP_WC_PROJECT_ID || 'demo';
+const walletConnectProjectId = process.env.REACT_APP_WALLETCONNECT_PROJECT_ID || process.env.REACT_APP_WC_PROJECT_ID || 'demo';
 const connectors = connectorsForWallets(
   [
     {
@@ -46,9 +89,13 @@ const connectors = connectorsForWallets(
 
 const config = createConfig({
   connectors,
-  chains: [hederaTestnetChain],
+  // Support Hedera, Flow, Zircuit, and Local Anvil
+  chains: [hederaTestnetChain, flowEvmTestnetChain, zircuitGarfieldChain, localAnvilChain],
   transports: {
+    [zircuitGarfieldChain.id]: http(zircuitGarfieldChain.rpcUrls.default.http[0]),
     [hederaTestnetChain.id]: http(hederaTestnetChain.rpcUrls.default.http[0]),
+    [flowEvmTestnetChain.id]: http(flowEvmTestnetChain.rpcUrls.default.http[0]),
+    [localAnvilChain.id]: http(localAnvilChain.rpcUrls.default.http[0]),
   },
 });
 
@@ -239,11 +286,10 @@ const Navigation = () => {
 // Main App component
 const AppContent = () => {
   const [selectedPolicy, setSelectedPolicy] = useState(null);
-  const currentNetwork = NETWORKS.HEDERA;
+  const currentNetwork = DEFAULT_NETWORK; // Driven by REACT_APP_NETWORK (zircuit|hedera|flow|local)
 
-  // Get contract addresses for current network
-    // Contract Configuration
-  const policyFactoryAddress = '0x1ffe05ace98e3a2175d647fbe100062bb190e285'; // Deployed PolicyFactory on Hedera Testnet
+  // Contract addresses for selected network (from env)
+  const { policyFactory: policyFactoryAddress } = getContractAddresses(currentNetwork.id);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -257,7 +303,7 @@ const AppContent = () => {
               <PolicyList
                 policyFactoryAddress={policyFactoryAddress}
                 policyFactoryAbi={POLICY_FACTORY_ABI}
-                chainId={hederaTestnetChain.id}
+                chainId={currentNetwork.id}
                 onPolicySelect={setSelectedPolicy}
               />
             </div>
@@ -280,7 +326,7 @@ const AppContent = () => {
               <PolicyList
                 policyFactoryAddress={policyFactoryAddress}
                 policyFactoryAbi={POLICY_FACTORY_ABI}
-                chainId={hederaTestnetChain.id}
+                chainId={currentNetwork.id}
                 onPolicySelect={setSelectedPolicy}
               />
               <PurchaseInsurance
@@ -299,7 +345,7 @@ const AppContent = () => {
               <PolicyList
                 policyFactoryAddress={policyFactoryAddress}
                 policyFactoryAbi={POLICY_FACTORY_ABI}
-                chainId={hederaTestnetChain.id}
+                chainId={currentNetwork.id}
                 onPolicySelect={setSelectedPolicy}
               />
               <InsuranceClaim

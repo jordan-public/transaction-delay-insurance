@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getRpcProxyUrl, getNetworkById } from '../config/networks';
 
 export const useRpcProxy = (chainId) => {
@@ -10,7 +10,7 @@ export const useRpcProxy = (chainId) => {
   const baseUrl = network ? getRpcProxyUrl(network) : null;
 
   // Test connection to RPC proxy
-  const testConnection = async () => {
+  const testConnection = useCallback(async () => {
     if (!baseUrl) return false;
     
     try {
@@ -27,7 +27,7 @@ export const useRpcProxy = (chainId) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [baseUrl]);
 
   // Get network info from proxy
   const getNetworkInfo = async () => {
@@ -124,7 +124,7 @@ export const useRpcProxy = (chainId) => {
     if (baseUrl) {
       testConnection();
     }
-  }, [baseUrl]);
+  }, [baseUrl, testConnection]);
 
   return {
     isConnected,

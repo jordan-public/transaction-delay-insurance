@@ -19,14 +19,17 @@ const PolicyList = ({ policyFactoryAddress, policyFactoryAbi, onPolicySelect, ch
   /** @type {[Policy|null, Function]} */
   const [selectedPolicy, setSelectedPolicy] = useState(null);
 
+  const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
+  const isConfigured = !!policyFactoryAddress && policyFactoryAddress !== ZERO_ADDR;
+
   // Read active policies from contract
   const { data: activePoliciesData, isLoading, error, refetch, isError } = useReadContract({
-    address: policyFactoryAddress,
+    address: isConfigured ? policyFactoryAddress : undefined,
     abi: policyFactoryAbi,
     functionName: 'getActivePolicies',
     chainId,
     query: {
-      enabled: !!policyFactoryAddress, // Enable even without wallet connection for read-only
+      enabled: isConfigured, // Enable even without wallet connection for read-only
     }
   });
 
@@ -74,7 +77,7 @@ const PolicyList = ({ policyFactoryAddress, policyFactoryAbi, onPolicySelect, ch
     onPolicySelect?.(policy);
   };
 
-  if (!policyFactoryAddress) {
+  if (!isConfigured) {
     return (
       <div className="card">
         <div className="text-center py-8">

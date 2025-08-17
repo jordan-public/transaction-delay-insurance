@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useAccount } from 'wagmi';
-import { parseEther } from 'ethers';
+import { parseEther, parseUnits } from 'ethers';
 import { useRpcProxy } from '../hooks/useRpcProxy';
 import toast from 'react-hot-toast';
 
 const SampleTransaction = ({ network }) => {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { broadcastTransaction, isConnected: proxyConnected, loading } = useRpcProxy(network?.id);
   const [txData, setTxData] = useState({
     to: '0x1234567890123456789012345678901234567890',
@@ -42,7 +42,7 @@ const SampleTransaction = ({ network }) => {
         to: txData.to,
         value: parseEther(txData.value).toString(),
         gasLimit: txData.gasLimit,
-        gasPrice: parseEther(txData.gasPrice, 'gwei').toString(),
+        gasPrice: parseUnits(txData.gasPrice, 'gwei').toString(),
       };
 
       const response = await broadcastTransaction(transactionData);
