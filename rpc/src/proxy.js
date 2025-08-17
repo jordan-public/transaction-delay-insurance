@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const axios = require('axios');
 
 const config = require('./config');
 const createLogger = require('./logger');
@@ -72,6 +73,65 @@ class RPCProxyServer {
   }
 
   setupRoutes() {
+    // JSON-RPC root handler (wallets expect POST /)
+    this.app.post('/', async (req, res) => {
+      const chainIdHex = '0x' + Number(config.currentNetwork.chainId).toString(16);
+
+      const handleSingle = async (payload) => {
+        try {
+          if (!payload || typeof payload !== 'object') {
+            return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' } };
+          }
+
+          const { id, method, params } = payload;
+
+          // Serve chain identity locally for reliability
+          if (method === 'eth_chainId') {
+            return { jsonrpc: '2.0', id, result: chainIdHex };
+          }
+          if (method === 'net_version') {
+            return { jsonrpc: '2.0', id, result: String(Number(config.currentNetwork.chainId)) };
+          }
+
+          // Forward other RPC methods to the upstream node
+          const upstream = await axios.post(
+            config.currentNetwork.rpcUrl,
+            payload,
+            { headers: { 'content-type': 'application/json' } }
+          );
+          return upstream.data;
+        } catch (err) {
+          // Normalize error to JSON-RPC format
+          return {
+            jsonrpc: '2.0',
+            id: payload?.id ?? null,
+            error: {
+              code: -32603,
+              message: 'Upstream RPC error',
+              data: err?.response?.data || err?.message || String(err)
+            }
+          };
+        }
+      };
+
+      try {
+        const body = req.body;
+        if (Array.isArray(body)) {
+          const results = await Promise.all(body.map(handleSingle));
+          return res.json(results);
+        }
+        const result = await handleSingle(body);
+        return res.json(result);
+      } catch (error) {
+        this.logger.error('Failed to process JSON-RPC request:', error);
+        return res.status(500).json({
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32603, message: 'Internal error' }
+        });
+      }
+    });
+
     // Health check
     this.app.get('/health', (req, res) => {
       res.json({

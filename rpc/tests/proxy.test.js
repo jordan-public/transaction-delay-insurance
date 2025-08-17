@@ -9,9 +9,9 @@ describe('RPC Proxy Server', () => {
     // Set test environment
     process.env.NODE_ENV = 'test';
     process.env.NETWORK = 'zircuit';
-    process.env.ZIRCUIT_RPC_URL = 'https://zircuit1-testnet.p2pify.com/';
-    process.env.ZIRCUIT_CHAIN_ID = '48899';
-    process.env.ZIRCUIT_NETWORK_NAME = 'Zircuit Testnet';
+  process.env.ZIRCUIT_RPC_URL = 'https://garfield-testnet.zircuit.com/';
+  process.env.ZIRCUIT_CHAIN_ID = '48898';
+  process.env.ZIRCUIT_NETWORK_NAME = 'Zircuit Garfield Testnet';
     process.env.SIGNING_MNEMONIC = 'test test test test test test test test test test test junk';
     process.env.LOG_LEVEL = 'error';
 
@@ -40,8 +40,8 @@ describe('RPC Proxy Server', () => {
         .get('/network')
         .expect(200);
 
-      expect(response.body).toHaveProperty('name', 'Zircuit Testnet');
-      expect(response.body).toHaveProperty('chainId', 48899);
+  expect(response.body).toHaveProperty('name', 'Zircuit Garfield Testnet');
+  expect(response.body).toHaveProperty('chainId', 48898);
       expect(response.body).toHaveProperty('signerAddress');
     });
 
@@ -65,6 +65,47 @@ describe('RPC Proxy Server', () => {
       expect(response.body).toHaveProperty('blockNumber');
       expect(response.body).toHaveProperty('timestamp');
       expect(typeof response.body.blockNumber).toBe('number');
+    });
+  });
+
+  describe('JSON-RPC root', () => {
+    test('POST / with eth_chainId should return hex chain id', async () => {
+      const response = await request(app)
+        .post('/')
+        .send({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('jsonrpc', '2.0');
+      expect(response.body).toHaveProperty('id', 1);
+  // 48898 dec -> 0xbf02 hex
+  expect(response.body).toHaveProperty('result', '0xbf02');
+    });
+
+    test('POST / with net_version should return decimal chain id as string', async () => {
+      const response = await request(app)
+        .post('/')
+        .send({ jsonrpc: '2.0', id: 2, method: 'net_version', params: [] })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('jsonrpc', '2.0');
+      expect(response.body).toHaveProperty('id', 2);
+  expect(response.body).toHaveProperty('result', '48898');
+    });
+
+    test('POST / supports batch requests', async () => {
+      const payload = [
+        { jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] },
+        { jsonrpc: '2.0', id: 2, method: 'net_version', params: [] }
+      ];
+      const response = await request(app)
+        .post('/')
+        .send(payload)
+        .expect(200);
+
+      expect(Array.isArray(response.body)).toBe(true);
+      const byId = Object.fromEntries(response.body.map(r => [r.id, r]));
+  expect(byId[1]).toHaveProperty('result', '0xbf02');
+  expect(byId[2]).toHaveProperty('result', '48898');
     });
   });
 

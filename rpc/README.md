@@ -285,8 +285,8 @@ npm run test:watch
 
 ## Network-Specific Details
 
-### Zircuit Testnet
-- Chain ID: 48899
+### Zircuit Garfield Testnet
+- Chain ID: 48898
 - Known for AI-based transaction quarantining
 - May have higher delay variability
 

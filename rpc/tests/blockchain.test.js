@@ -6,9 +6,9 @@ describe('BlockchainService', () => {
   beforeAll(async () => {
     const config = {
       currentNetwork: {
-        rpcUrl: 'https://zircuit1-testnet.p2pify.com/',
-        chainId: 48899,
-        networkName: 'Zircuit Testnet'
+  rpcUrl: 'https://garfield-testnet.zircuit.com/',
+  chainId: 48898,
+  networkName: 'Zircuit Garfield Testnet'
       },
       signing: {
         mnemonic: 'test test test test test test test test test test test junk',
@@ -51,8 +51,8 @@ describe('BlockchainService', () => {
 
   test('should get network info', () => {
     const networkInfo = blockchainService.getNetworkInfo();
-    expect(networkInfo).toHaveProperty('name', 'Zircuit Testnet');
-    expect(networkInfo).toHaveProperty('chainId', 48899);
+  expect(networkInfo).toHaveProperty('name', 'Zircuit Garfield Testnet');
+  expect(networkInfo).toHaveProperty('chainId', 48898);
     expect(networkInfo).toHaveProperty('signerAddress');
   });
 });
