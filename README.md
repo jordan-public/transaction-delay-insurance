@@ -1,3 +1,9 @@
+[This project](https://ethglobal.com/showcase/tx-delay-insurance-5fhae) won the following prizes at the [ETHGlobal New York 2025](https://ethglobal.com/events/newyork2025) hackathon:
+
+🏊‍♂️ [Flow - Flow Builder Pool Prize](https://ethglobal.com/showcase/tx-delay-insurance-5fhae)
+
+🏆 [ETHGlobal New York 2025 Finalist](https://ethglobal.com/showcase/tx-delay-insurance-5fhae) (presentaion [here](https://youtu.be/Q18pnAODgqQ?t=7999))
+
 # Transaction Delay Insurance
 
 ## Demo and Video
